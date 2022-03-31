@@ -3,16 +3,17 @@ import numpy as np
 import math
 from tqdm import tqdm
 
+# параметры  тракта приемо-передачи
 PRD_PRM_PARAMS = {
     'source':
     {
-        'params': 1.7,
-        'types': 'M'
+        'params': 1.7,  # параметры распределения, для экспоненциально - лямбда
+        'types': 'M'    # тип распределения. М - экспоненциальное
     },
     'buffer': 100,
     'prd':
     {
-        'params': [100, 10],
+        'params': [100, 10],  # среднее, СКО
         'types': 'Normal'
     },
     'em_env_control':
@@ -22,9 +23,9 @@ PRD_PRM_PARAMS = {
     },
     'anti_jam_measures':
     {
-        'params': [15, 5],
-        'types': 'Uniform',
-        'probs': [0.9, 0.1]
+        'params': [15, 5],   # среднее и полуинтервал влево и вправо
+        'types': 'Uniform',  # равномерное
+        'probs': [0.9, 0.1]  # вероятности после завершения [успех, неудача]
     }
 }
 
@@ -35,7 +36,7 @@ REB_PARAMS = {
         'types': 'M',
         'probs': [0.9, 0.1]
     },
-    'making_noise':
+    'making_noise':  # объединил действия после успешной разведки в одно - постановка помех. Если нужно, можно добавить
     {
         'params': [10, 3],
         'types': 'Normal',
@@ -48,6 +49,7 @@ class SetModelException(Exception):
 
     def __str__(self, text):
         return text
+
 
 class Task:
     """
@@ -75,9 +77,12 @@ class Task:
 
 
 class REB_model:
+    """
+        Модель РЭБ
+    """
     def __init__(self,
-                 prm_prd_params,
-                 reb_params
+                 prm_prd_params=PRD_PRM_PARAMS,  # передача на вход параметров, по умолчанию заданы вверху
+                 reb_params=REB_PARAMS
                  ):
         self.prm_prd_params = prm_prd_params
         self.reb_params = reb_params
@@ -339,8 +344,10 @@ class REB_model:
 
 
 if __name__ == '__main__':
+
+    # пример использования - создаем экземпляр класса и передаем параметры, если нужно подправить - они вверху
     model = REB_model(PRD_PRM_PARAMS, REB_PARAMS)
 
-    model.run(100000)
+    model.run(100000)  #  задаем кол-во пакетов на вход и запускаем
 
-    print(model)
+    print(model)  # вывод результатов
