@@ -108,6 +108,9 @@ class REB_model:
         self.prm_prd_moments = [0, 0, 0]
         self.wait_moments = [0, 0, 0]
 
+        self.prm_prm_times = []
+        self.wait_times = []
+
         self.times = {}
         self.times['arrival_time'] = 0
         self.times['end_prd_time'] = 1e10
@@ -255,7 +258,7 @@ class REB_model:
 
             self.taked += 1
             self.refresh_wait_time_stat(0)
-
+            self.wait_times.append(0)
             self.times['end_prd_time'] = self.source['dist'].generate() + self.t_tek
 
             self.is_channel_free = False
@@ -283,13 +286,14 @@ class REB_model:
         self.task_in_system_count -= 1
         self.is_channel_free = True
         self.refresh_prm_prd_time_stat(self.t_tek - tsk.arr_time)
-
+        self.prm_prm_times.append(self.t_tek - tsk.arr_time)
 
         if len(self.queue) != 0:
             tsk = self.queue.pop(0)
             self.taked += 1
             tsk.wait_time += self.t_tek - tsk.start_waiting_time
             self.refresh_wait_time_stat(tsk.wait_time)
+            self.wait_times.append(tsk.wait_time)
             self.times['end_prd_time'] = self.source['dist'].generate() + self.t_tek
             self.task_on_prd = tsk
             self.is_channel_free = False
@@ -350,12 +354,23 @@ class REB_model:
         else:
             self.start_intelligence()
 
+    def make_prm_prd_times_plot(self):
+
+        import matplotlib.pyplot as plt
+        fig, ax = plt.subplots(1, 1)
+        ax.hist(self.prm_prm_times, density=True, histtype='stepfilled', alpha=0.4)
+        ax.legend(loc='best', frameon=False)
+        plt.show()
+
+
 
 if __name__ == '__main__':
 
     # пример использования - создаем экземпляр класса и передаем параметры, если нужно подправить - они вверху
     model = REB_model(PRD_PRM_PARAMS, REB_PARAMS)
 
-    model.run(1000000)  #  задаем кол-во пакетов на вход и запускаем
+    model.run(300000)  #  задаем кол-во пакетов на вход и запускаем
 
-    print(model)  # вывод результатов
+    print(model)  # вывод
+
+    model.make_prm_prd_times_plot()
