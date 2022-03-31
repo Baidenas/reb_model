@@ -358,7 +358,16 @@ class REB_model:
 
         import matplotlib.pyplot as plt
         fig, ax = plt.subplots(1, 1)
-        ax.hist(self.prm_prm_times, density=True, histtype='stepfilled', alpha=0.4)
+        ax.hist(self.prm_prm_times, density=True, histtype='stepfilled', alpha=0.4, label="Гистограмма")
+
+        D = self.prm_prd_moments[1] - self.prm_prd_moments[0]**2
+        sko = math.sqrt(D)
+        x = np.linspace(min(self.prm_prm_times), max(self.prm_prm_times), 1000)
+        y = []
+
+        for i in range(len(x)):
+            y.append(rd.Normal_dist.get_f(self.prm_prd_moments[0], sko, x[i]))
+        ax.plot(x, y, label="Аппроксимация норм")
         ax.legend(loc='best', frameon=False)
         plt.show()
 

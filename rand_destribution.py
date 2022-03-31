@@ -29,6 +29,15 @@ class Normal_dist:
         """
         return np.random.normal(mean, sko)
 
+    @staticmethod
+    def get_f(mean, sko, x):
+        """
+        """
+        coef = 1/(sko*math.sqrt(2*math.pi))
+        f = coef*math.exp(-(mean-x)**2/(2*sko*sko))
+        return f
+
+
 
 class Uniform_dist:
     def __init__(self, params):
@@ -714,12 +723,8 @@ class Gamma:
         :param t: время
         :return: значение плотности Гамма-распределения
         """
-        fract = sp.gamma(alpha)
-        if math.fabs(fract) > 1e-12:
-            if math.fabs(mu * t) > 1e-12:
-                main = mu * math.pow(mu * t, alpha - 1) * math.exp(-mu * t) / fract
-            else:
-                main = 0
+        if math.fabs(mu * t) > 1e-12:
+            main = mu * math.pow(mu * t, alpha - 1) * math.exp(-mu * t) / Gamma.get_gamma(alpha)
         else:
             main = 0
         return main
