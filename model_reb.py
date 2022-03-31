@@ -7,13 +7,13 @@ from tqdm import tqdm
 PRD_PRM_PARAMS = {
     'source':
     {
-        'params': 1.7,  # параметры распределения, для экспоненциально - лямбда
+        'params': 1.0,  # параметры распределения, для экспоненциально - лямбда
         'types': 'M'    # тип распределения. М - экспоненциальное
     },
     'buffer': 100,
     'prd':
     {
-        'params': [100, 10],  # среднее, СКО
+        'params': [1, 1],  # среднее, СКО
         'types': 'Normal'
     },
     'em_env_control':
@@ -252,7 +252,12 @@ class REB_model:
             self.times['end_prd_time'] = self.prd['dist'].generate() + self.t_tek
             self.task_on_prd = tsk
             self.task_in_system_count += 1
+
             self.taked += 1
+            self.refresh_wait_time_stat(0)
+
+            self.times['end_prd_time'] = self.source['dist'].generate() + self.t_tek
+
             self.is_channel_free = False
         else:
 
@@ -261,9 +266,11 @@ class REB_model:
                 if len(self.queue) >= self.buffer_length:
                     self.task_rejected_count += 1
                 else:
+                    tsk.start_waiting_time = self.t_tek
                     self.queue.append(tsk)
                     self.task_in_system_count += 1
             else:
+                tsk.start_waiting_time = self.t_tek
                 self.task_in_system_count += 1
                 self.queue.append(tsk)
 
@@ -276,12 +283,13 @@ class REB_model:
         self.task_in_system_count -= 1
         self.is_channel_free = True
         self.refresh_prm_prd_time_stat(self.t_tek - tsk.arr_time)
-        self.refresh_wait_time_stat(tsk.wait_time)
+
 
         if len(self.queue) != 0:
             tsk = self.queue.pop(0)
             self.taked += 1
             tsk.wait_time += self.t_tek - tsk.start_waiting_time
+            self.refresh_wait_time_stat(tsk.wait_time)
             self.times['end_prd_time'] = self.source['dist'].generate() + self.t_tek
             self.task_on_prd = tsk
             self.is_channel_free = False
@@ -348,6 +356,6 @@ if __name__ == '__main__':
     # пример использования - создаем экземпляр класса и передаем параметры, если нужно подправить - они вверху
     model = REB_model(PRD_PRM_PARAMS, REB_PARAMS)
 
-    model.run(100000)  #  задаем кол-во пакетов на вход и запускаем
+    model.run(1000000)  #  задаем кол-во пакетов на вход и запускаем
 
     print(model)  # вывод результатов
