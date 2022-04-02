@@ -14,20 +14,30 @@ class Normal_dist:
         self.mean = params[0]
         self.sko = params[1]
         self.type = 'Normal'
+        if len(params) > 2:
+            self.min = params[2]
+        if len(params) > 3:
+            self.max = params[3]
 
     def generate(self):
         """
         Генерация псевдо-случайных чисел
         """
-        return self.generate_static(self.mean, self.sko)
+        return self.generate_static(self.mean, self.sko, self.min, self.max)
 
     @staticmethod
-    def generate_static(mean, sko):
+    def generate_static(mean, sko, min_value=0, max_value=None):
         """
         Генерация псевдо-случайных чисел
         Статический метод
         """
-        return np.random.normal(mean, sko)
+        value = np.random.normal(mean, sko)
+        if max_value:
+            if value>max_value:
+                return max_value
+        if value < min_value:
+            return min_value
+        return value
 
     @staticmethod
     def get_f(mean, sko, x):
@@ -36,6 +46,7 @@ class Normal_dist:
         coef = 1/(sko*math.sqrt(2*math.pi))
         f = coef*math.exp(-(mean-x)**2/(2*sko*sko))
         return f
+
 
 
 

@@ -7,40 +7,40 @@ from tqdm import tqdm
 PRD_PRM_PARAMS = {
     'source':
     {
-        'params': 1.0,  # параметры распределения, для экспоненциально - лямбда
+        'params': 0.4,  # параметры распределения, для экспоненциально - лямбда
         'types': 'M'    # тип распределения. М - экспоненциальное
     },
     'buffer': 100,
     'prd':
     {
-        'params': [1, 1],  # среднее, СКО
+        'params': [10, 1, 5, 100],
         'types': 'Normal'
     },
     'em_env_control':
     {
-        'params': 1.0/45,
-        'types': 'M'
+        'params': [10, 3, 2, 100],
+        'types': 'Normal'
     },
     'anti_jam_measures':
     {
-        'params': [15, 5],   # среднее и полуинтервал влево и вправо
-        'types': 'Uniform',  # равномерное
-        'probs': [0.9, 0.1]  # вероятности после завершения [успех, неудача]
+        'params': [10, 3, 2, 100],
+        'types': 'Normal',
+        'probs': [0.8, 0.2]  # вероятности после завершения [успех, неудача]
     }
 }
 
 REB_PARAMS = {
     'intelligence':
     {
-        'params': 1.0/12,
+        'params': 0.05,
         'types': 'M',
         'probs': [0.9, 0.1]
     },
     'making_noise':  # объединил действия после успешной разведки в одно - постановка помех. Если нужно, можно добавить
     {
-        'params': [10, 3],
+        'params': [10, 1, 1, 100],
         'types': 'Normal',
-        'probs': [0.9, 0.1]
+        'probs': [0.8, 0.2]
     }
 }
 
@@ -108,7 +108,7 @@ class REB_model:
         self.prm_prd_moments = [0, 0, 0]
         self.wait_moments = [0, 0, 0]
 
-        self.prm_prm_times = []
+        self.prm_prd_times = []
         self.wait_times = []
 
         self.times = {}
@@ -164,7 +164,6 @@ class REB_model:
         res += "Всего пакетов: " + str(self.arrived) + "\n"
         if self.is_buffer_set != None:
             res += "Потеряно: " + str(self.task_rejected_count) + "\n"
-        res += "Начали передачу: " + str(self.taked) + "\n"
         res += "Закончили передачу: " + str(self.end_prd_task_count) + "\n"
         res += "Находятся в процессе:" + str(self.task_in_system_count) + "\n"
         res += "В буффере " + str(len(self.queue)) + "\n"
@@ -245,64 +244,80 @@ class REB_model:
 
 
     def start_prd(self, arr_time):
+
         tsk = Task(arr_time)
         self.t_tek = arr_time
         self.times['arrival_time'] = self.source['dist'].generate() + self.t_tek
 
         self.arrived += 1
 
-        if self.is_channel_free:
-            self.times['end_prd_time'] = self.prd['dist'].generate() + self.t_tek
-            self.task_on_prd = tsk
-            self.task_in_system_count += 1
+        if self.is_suppressed:
+            self.suppressions_count += 1
+            self.task_rejected_count += 1
 
-            self.taked += 1
-            self.refresh_wait_time_stat(0)
-            self.wait_times.append(0)
-            self.times['end_prd_time'] = self.source['dist'].generate() + self.t_tek
-
-            self.is_channel_free = False
         else:
+            if self.is_channel_free:
+                self.times['end_prd_time'] = self.prd['dist'].generate() + self.t_tek
+                self.task_on_prd = tsk
+                self.task_in_system_count += 1
 
-            if self.is_buffer_set:
-                # max in system = 1 + buffer_length
-                if len(self.queue) >= self.buffer_length:
-                    self.task_rejected_count += 1
+                self.taked += 1
+                self.refresh_wait_time_stat(0)
+                self.wait_times.append(0)
+                self.times['end_prd_time'] = self.source['dist'].generate() + self.t_tek
+
+                self.is_channel_free = False
+            else:
+
+                if self.is_buffer_set:
+                    # max in system = 1 + buffer_length
+                    if len(self.queue) >= self.buffer_length:
+                        self.task_rejected_count += 1
+                    else:
+                        tsk.start_waiting_time = self.t_tek
+                        self.queue.append(tsk)
+                        self.task_in_system_count += 1
                 else:
                     tsk.start_waiting_time = self.t_tek
-                    self.queue.append(tsk)
                     self.task_in_system_count += 1
-            else:
-                tsk.start_waiting_time = self.t_tek
-                self.task_in_system_count += 1
-                self.queue.append(tsk)
+                    self.queue.append(tsk)
 
     def end_prd(self):
-
-        tsk = self.task_on_prd
         self.t_tek = self.times['end_prd_time']
         self.times['end_prd_time'] = 1e10
-        self.end_prd_task_count += 1
-        self.task_in_system_count -= 1
-        self.is_channel_free = True
-        self.refresh_prm_prd_time_stat(self.t_tek - tsk.arr_time)
-        self.prm_prm_times.append(self.t_tek - tsk.arr_time)
 
-        if len(self.queue) != 0:
-            tsk = self.queue.pop(0)
-            self.taked += 1
-            tsk.wait_time += self.t_tek - tsk.start_waiting_time
-            self.refresh_wait_time_stat(tsk.wait_time)
-            self.wait_times.append(tsk.wait_time)
-            self.times['end_prd_time'] = self.source['dist'].generate() + self.t_tek
-            self.task_on_prd = tsk
-            self.is_channel_free = False
+        if not self.is_suppressed:
+
+            tsk = self.task_on_prd
+            self.end_prd_task_count += 1
+            self.task_in_system_count -= 1
+            self.is_channel_free = True
+            value = self.t_tek - tsk.arr_time
+            self.refresh_prm_prd_time_stat(value)
+            self.prm_prd_times.append(value)
+
+            if len(self.queue) != 0:
+                tsk = self.queue.pop(0)
+                self.taked += 1
+                tsk.wait_time += self.t_tek - tsk.start_waiting_time
+                self.refresh_wait_time_stat(tsk.wait_time)
+                self.wait_times.append(tsk.wait_time)
+                self.times['end_prd_time'] = self.source['dist'].generate() + self.t_tek
+                self.task_on_prd = tsk
+                self.is_channel_free = False
 
     def on_suppression(self):
         self.suppressions_count += 1
         self.is_suppressed = True
+        if self.is_channel_free==False:
+            self.is_channel_free = True
+            self.task_in_system_count -=1
+
+        self.times['end_prd_time'] = 1e10
+        self.task_on_prd = None
         self.start_em_env_control()
         self.start_intelligence()
+
 
     def start_em_env_control(self):
         self.times['end_em_env_control_time'] = self.t_tek + self.em_env_control['dist'].generate()
@@ -320,6 +335,7 @@ class REB_model:
         self.times['end_anti_jam_measures_time'] = 1e10
         r = np.random.rand()
         if r < self.anti_jam_measures['probs'][0]:
+            self.is_suppressed = False
             self.start_prd(self.t_tek)
         else:
             self.start_em_env_control()
@@ -358,11 +374,11 @@ class REB_model:
 
         import matplotlib.pyplot as plt
         fig, ax = plt.subplots(1, 1)
-        ax.hist(self.prm_prm_times, density=True, histtype='stepfilled', alpha=0.4, label="Гистограмма")
+        ax.hist(self.prm_prd_times, bins=50, density=True, histtype='stepfilled', alpha=0.4, label="Гистограмма")
 
         D = self.prm_prd_moments[1] - self.prm_prd_moments[0]**2
         sko = math.sqrt(D)
-        x = np.linspace(min(self.prm_prm_times), max(self.prm_prm_times), 1000)
+        x = np.linspace(min(self.prm_prd_times), max(self.prm_prd_times), 1000)
         y = []
 
         for i in range(len(x)):
