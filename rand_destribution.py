@@ -11,6 +11,7 @@ class Normal_dist:
         mean - среднее значение
         sko - СКО
         """
+        self.params = params
         self.mean = params[0]
         self.sko = params[1]
         self.type = 'Normal'
@@ -23,6 +24,12 @@ class Normal_dist:
         """
         Генерация псевдо-случайных чисел
         """
+
+        if len(self.params) < 3:
+            return self.generate_static(self.mean, self.sko)
+        if len(self.params) < 4:
+            return self.generate_static(self.mean, self.sko, self.min)
+
         return self.generate_static(self.mean, self.sko, self.min, self.max)
 
     @staticmethod
@@ -60,6 +67,7 @@ class Uniform_dist:
         self.mean = params[0]
         self.half_interval = params[1]
         self.type = 'Uniform'
+        self.params = params
 
     def generate(self):
         """
@@ -454,6 +462,7 @@ class Det_dist:
         """
         self.b = b
         self.type = 'D'
+        self.params = b
 
     def generate(self):
         return Det_dist.generate_static(self.b)
