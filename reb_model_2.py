@@ -263,6 +263,7 @@ if __name__ == '__main__':
          alpha=0.7)
     plt.hist(model.prd.prd_times, bins=15, density=True, label="в условиях РЭБ", alpha=0.7)
     plt.legend()
-    plt.title("Время передачи сигнала")
+    plt.title("Распределение времени передачи сигнала")
     plt.xlabel('t, сек')
+    plt.ylabel('Вероятность')
     plt.show()
