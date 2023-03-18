@@ -10,6 +10,8 @@ class Normal_dist:
         Принимает список параметров в следующей последовательности:
         mean - среднее значение
         sko - СКО
+        min - минимальное значение (опционально)
+        max - максимальное значение (опцианольно, должно быть задано минимальное тоже)
         """
         self.params = params
         self.mean = params[0]
@@ -28,9 +30,9 @@ class Normal_dist:
         if len(self.params) < 3:
             return self.generate_static(self.mean, self.sko)
         if len(self.params) < 4:
-            return self.generate_static(self.mean, self.sko, self.min)
+            return self.generate_static(self.mean, self.sko, min_value=self.min)
 
-        return self.generate_static(self.mean, self.sko, self.min, self.max)
+        return self.generate_static(self.mean, self.sko, min_value=self.min, max_value=self.max)
 
     @staticmethod
     def generate_static(mean, sko, min_value=0, max_value=None):
@@ -39,22 +41,19 @@ class Normal_dist:
         Статический метод
         """
         value = np.random.normal(mean, sko)
-        if max_value:
-            if value>max_value:
-                return max_value
-        if value < min_value:
-            return min_value
+        if max_value and value > max_value:
+            return Normal_dist.generate_static(mean, sko, min_value=min_value, max_value=max_value)
+        if min_value and value < min_value:
+            return Normal_dist.generate_static(mean, sko, min_value=min_value, max_value=max_value)
         return value
 
     @staticmethod
     def get_f(mean, sko, x):
         """
         """
-        coef = 1/(sko*math.sqrt(2*math.pi))
-        f = coef*math.exp(-(mean-x)**2/(2*sko*sko))
+        coef = 1 / (sko * math.sqrt(2 * math.pi))
+        f = coef * math.exp(-(mean - x) ** 2 / (2 * sko * sko))
         return f
-
-
 
 
 class Uniform_dist:
@@ -285,7 +284,8 @@ class H2_dist:
                 for i in range(len(moments)):
                     f.append(moments[i] * complex(1, (i + 1) * e))
 
-                return H2_dist.get_params_clx(f, verbose=verbose, ee=ee, e=e*(1.0+e_percent), e_percent=e_percent, is_fitting=is_fitting)
+                return H2_dist.get_params_clx(f, verbose=verbose, ee=ee, e=e * (1.0 + e_percent), e_percent=e_percent,
+                                              is_fitting=is_fitting)
 
             coev = cmath.sqrt(moments[1] - moments[0] ** 2) / moments[0]
 
@@ -300,7 +300,8 @@ class H2_dist:
                     #     f.append(moments[0])
                     # else:
                     f.append(moments[i] * complex(1, (i + 1) * e))
-                return H2_dist.get_params_clx(f, verbose=verbose, ee=ee, e=e*(1.0+e_percent), e_percent=e_percent, is_fitting=is_fitting)
+                return H2_dist.get_params_clx(f, verbose=verbose, ee=ee, e=e * (1.0 + e_percent), e_percent=e_percent,
+                                              is_fitting=is_fitting)
 
         res = [0, 0, 0]  # y1, mu1, mu2
         c1 = complex(c1)
@@ -416,7 +417,8 @@ class Cox_dist:
                 for i in range(len(moments)):
                     f.append(moments[i] * complex(1, (i + 1) * e))
 
-                return Cox_dist.get_params(f, verbose=verbose, ee=ee, e=e*(1.0+e_percent), e_percent=e_percent, is_fitting=is_fitting)
+                return Cox_dist.get_params(f, verbose=verbose, ee=ee, e=e * (1.0 + e_percent), e_percent=e_percent,
+                                           is_fitting=is_fitting)
 
             coev = cmath.sqrt(moments[1] - moments[0] ** 2) / moments[0]
 
@@ -431,7 +433,8 @@ class Cox_dist:
                     #     f.append(moments[0])
                     # else:
                     f.append(moments[i] * complex(1, (i + 1) * e))
-                return Cox_dist.get_params(f, verbose=verbose, ee=ee, e=e*(1.0+e_percent), e_percent=e_percent, is_fitting=is_fitting)
+                return Cox_dist.get_params(f, verbose=verbose, ee=ee, e=e * (1.0 + e_percent), e_percent=e_percent,
+                                           is_fitting=is_fitting)
 
         # # особые случаи:
         # if abs(moments[1] - moments[0] * moments[0]) < ee:
@@ -456,6 +459,7 @@ class Cox_dist:
 
 class Det_dist:
     """Детерминированное"""
+
     def __init__(self, b):
         """
         Принимает список параметров в следующей последовательности - alpha, K

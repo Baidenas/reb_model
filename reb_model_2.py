@@ -76,6 +76,7 @@ class Prd:
         self.status = PrdStatus.STOPPED
         self.time_to_end = 1e10
         self.success_num = 0
+        self.total_prd_num = 0
         self.prd_moments = [0, 0, 0]
         self.prd_times = []
         self.start_time = 0
@@ -89,6 +90,7 @@ class Prd:
     def on_start_prd(self, ttek, is_all_ok=True):
         self.status = PrdStatus.TRANSMITTING
         self.time_to_end = ttek + self.prd_distrib.generate()
+        self.total_prd_num += 1
         if is_all_ok:
             self.start_time = ttek
 
@@ -207,22 +209,60 @@ class Model:
             f"ITER {iter_num} TTEK {self.ttek} PRD SUCCESS NUM: {self.prd.success_num}, SUPPRESSIONS NUM: {self.jam.success_num}\n\tPRD MOMENTS: {self.prd.prd_moments}")
 
 
+def create_normal_bins(normal_params, size=10000):
+    distrib = rd.Normal_dist(normal_params)
+    bins = []
+    for i in range(size):
+        bins.append(distrib.generate())
+
+    return bins
+
+
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
-    prd_distrib = Distribution('Normal', [3, 1, 3, 10])
-    ems_distrib = Distribution('M', 2)
-    noise_protection_distrib = Distribution('M', 3)
-    intelligence_distrib = Distribution('M', 1)
-    suppression_distrib = Distribution('M', 1)
+
+    # Распределение времени передачи сигнала
+    # Парметры усеченного нормального распределения указаны в следющем порядке
+    #   mean - среднее значение
+    #   sko - СКО
+    #   min - минимальное значение(опционально)
+    #   max - максимальное значение(опцианольно, должно быть задано минимальное     тоже)
+
+    prd_distrib = Distribution('Normal', [7, 2.5, 3, 30])
+
+    # распределение времени проверки на ЭМС
+    ems_distrib = Distribution('M', 1)
+
+    # распределение времени создания защиты
+    noise_protection_distrib = Distribution('M', 1)
+
+    # распределение времени разведки
+    intelligence_distrib = Distribution('Normal', [3, 1, 1, 30])
+
+    # распределение времени постановки помех
+    suppression_distrib = Distribution('Normal', [7, 1, 3, 30])
+
+    # вероятность успешного подавления текущей помехой против текущего сигнала прд
     prob_suppression = 0.3
-    prob_right_noise_protection = 0.2
 
+    # вероятность успешной защиты против текущей помехи
+    prob_right_noise_protection = 0.6
+
+    # Создаем имитационную модель РЭБ
     model = Model(prd_distrib, ems_distrib, noise_protection_distrib, intelligence_distrib, suppression_distrib,
-                  prob_suppression=prob_suppression, prob_right_noise_protection=prob_right_noise_protection,
-                  model_num=1000)
+              prob_suppression=prob_suppression, prob_right_noise_protection=prob_right_noise_protection,
+              model_num=1000)
 
+    # Запускаем имитационную модель
     model.run()
-    print(min(model.prd.prd_times), max(model.prd.prd_times))
-    plt.hist(model.prd.prd_times, bins=10, density=True)
-    plt.show()
 
+    print(f"Вероятность успешного подавления: {model.jam.success_num / model.prd.total_prd_num:0.3f}")
+    print(f"Вероятность успешной передачи сигнала: {model.prd.success_num / model.prd.total_prd_num:0.3f}")
+
+    plt.hist(create_normal_bins(prd_distrib.params, size=10000), bins=15, density=True, label="без РЭБ",
+         alpha=0.7)
+    plt.hist(model.prd.prd_times, bins=15, density=True, label="в условиях РЭБ", alpha=0.7)
+    plt.legend()
+    plt.title("Время передачи сигнала")
+    plt.xlabel('t, сек')
+    plt.show()
