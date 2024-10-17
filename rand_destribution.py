@@ -233,7 +233,7 @@ class H2_dist:
             res[2] = 1e6
             return res
         else:
-            max_iteration = 10000
+            max_iteration = 100000
             tec = 0
             t1 = 0
             t2 = 0
